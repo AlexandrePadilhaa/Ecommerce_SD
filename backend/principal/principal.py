@@ -10,6 +10,23 @@
 # um pedido for recusado, o microsserviço Principal publicará no tópico
 # Pedidos_Excluídos.
 
+# Principal publica em Pedidos_Criados
+# Principal consome de Pagamentos_Aprovados, Pagamentos_Recusados e Pedidos_Enviados 
+
+# TODO
+# PRODUTOS
+# vizualizar
+
+# CARRINHO
+# inserir
+# atualizar
+# remover
+
+# PEDIDOS
+# realizar
+# consultar
+# excluir
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import pika
