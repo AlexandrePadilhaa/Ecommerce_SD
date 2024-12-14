@@ -32,14 +32,12 @@ from pydantic import BaseModel
 import pika
 import json
 
+from ..utils import publish_message
+
 app = FastAPI()
 
 RABBITMQ_HOST = "localhost"
 EXCHANGE = "ecommerce"
-
-def get_rabbitmq_connection():
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
-    return connection
 
 
 class Pedido(BaseModel):
@@ -52,24 +50,13 @@ class Pedido(BaseModel):
 @app.post("/pedidos/", status_code=201)
 def criar_pedido(pedido: Pedido):
     try:
-        connection = get_rabbitmq_connection()
-        channel = connection.channel()
-        
-        # Declaração do exchange e publicação do evento
-        channel.exchange_declare(exchange=EXCHANGE, exchange_type="topic", durable=True)
         mensagem = {
             "id": pedido.id,
             "cliente": pedido.cliente,
             "produtos": pedido.produtos,
             "total": pedido.total
         }
-        channel.basic_publish(
-            exchange=EXCHANGE,
-            routing_key="Pedidos_Criados",
-            body=json.dumps(mensagem),
-            properties=pika.BasicProperties(content_type="application/json")
-        )
-        connection.close()
+        publish_message("Pedidos_Criados", mensagem)
         return {"mensagem": "Pedido criado com sucesso", "pedido": mensagem}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao criar pedido: {str(e)}")

@@ -2,7 +2,7 @@
 
 
 ## iniciar serviço
-uvicorn principal:app --reload --host 0.0.0.0 --port 8000
+uvicorn backend.principal.principal:app --reload --host 0.0.0.0 --port 8000
 
 ### Iniciar RabbitMQ
 rabbitmq-service start
