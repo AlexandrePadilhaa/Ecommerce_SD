@@ -10,35 +10,28 @@
 # um pedido for recusado, o microsserviço Principal publicará no tópico
 # Pedidos_Excluídos.
 
-# Principal publica em Pedidos_Criados
+# Principal publica em Pedidos_Criados e Pedidos_Excluidos
 # Principal consome de Pagamentos_Aprovados, Pagamentos_Recusados e Pedidos_Enviados 
 
-# TODO
-# PRODUTOS
-# vizualizar
-
-# CARRINHO
-# inserir
-# atualizar
-# remover
-
-# PEDIDOS
-# realizar
-# consultar
 # excluir
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+import threading
 import pika
 import json
 
-from ..utils import publish_message
+from backend.utils import publish_message, get_connection
 
 app = FastAPI()
 
 RABBITMQ_HOST = "localhost"
 EXCHANGE = "ecommerce"
 
+# Endpoint para teste de saúde
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
 
 class Pedido(BaseModel):
     id: int
@@ -61,7 +54,42 @@ def criar_pedido(pedido: Pedido):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao criar pedido: {str(e)}")
 
-# Endpoint para teste de saúde
-@app.get("/health")
-def health_check():
-    return {"status": "ok"}
+
+#test
+pedidos = {
+    1: {
+        "id": 1,
+        "cliente": "João Silva",
+        "produtos": ["Produto A", "Produto B"],
+        "total": 150.50,
+        "status": "Criado"
+    },
+    2: {
+        "id": 2,
+        "cliente": "Maria Souza",
+        "produtos": ["Produto C"],
+        "total": 75.00,
+        "status": "Criado"
+    }
+}
+@app.get("/pedidos/")
+def listar_pedidos():
+    return {"pedidos": list(pedidos.values())}
+
+@app.get("/pedidos/{id}")
+def consultar_pedido(id: int):
+    pedido = pedidos.get(id)
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    return pedido
+
+# Exclusão de pedidos
+@app.delete("/pedidos/{id}")
+def excluir_pedido(id: int):
+    pedido = pedidos.pop(id, None)
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    # Publica no tópico Pedidos_Excluídos
+    publish_message(exchange="ecommerce", routing_key="Pedidos_Excluidos", message={"id": id})
+    return {"mensagem": "Pedido excluído com sucesso"}
+

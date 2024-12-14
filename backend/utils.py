@@ -28,10 +28,11 @@ def publish_message(routing_key, message, exchange= EXCHANGE,):
             properties=pika.BasicProperties(content_type="application/json")
         )
         connection.close()
+        print(f"Mensagem publicada com sucesso")
     except Exception as e:
         print(f"Erro ao publicar mensagem: {e}")
 
-def consume_messages(queue, routing_key, callback, exchange= EXCHANGE,):
+def consume_messages(queue, routing_key, callback, exchange= EXCHANGE):
     try:
         connection = get_connection()
         channel = connection.channel()
