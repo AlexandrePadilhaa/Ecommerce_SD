@@ -22,8 +22,7 @@ import threading
 import pika
 import json
 from pathlib import Path
-import uvicorn
-import atexit
+from functools import partial
 # import sys
 # import os
 # sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname('utils.py'), '..')))
@@ -133,14 +132,15 @@ def atualiza_status(id_pedido,status):
             pedido['status'] = status
     print(f'Status do pedido {id_pedido} atualizado')
             
-def recebe_notificacao(ch, method, properties,body):
+def recebe_notificacao(ch, method, properties,body,tipo):
     try:
         message = json.loads(body)
         print(f"Recebido evento: {message}")
         id = message['id_pedido']
         status = message['status']
         
-        atualiza_status(id,status)
+        if tipo != 'exclusao':
+            atualiza_status(id,status)
     except Exception as e:
         print(f"Erro ao processar pedido: {e}")
         
@@ -157,12 +157,15 @@ def iniciar_consumidores():
 
         channel.queue_declare(queue='pgtos_aprovados', durable=True)
         channel.queue_declare(queue='pgtos_recusados', durable=True)
+        channel.queue_declare(queue='pedidos_enviados', durable=True)
 
         channel.queue_bind(exchange=EXCHANGE, queue='pgtos_aprovados', routing_key='Pagamentos_Aprovados')
         channel.queue_bind(exchange=EXCHANGE, queue='pgtos_recusados', routing_key='Pagamentos_Recusados')
-
-        channel.basic_consume(queue='pgtos_aprovados', on_message_callback=recebe_notificacao, auto_ack=True)
-        channel.basic_consume(queue='pgtos_recusados', on_message_callback=excluir_pedido, auto_ack=True)
+        channel.queue_bind(exchange=EXCHANGE, queue='pedidos_enviados', routing_key='Pedidos_Enviados')
+        
+        channel.basic_consume(queue='pgtos_aprovados', on_message_callback=partial(recebe_notificacao, tipo='aprovacao'), auto_ack=True)
+        channel.basic_consume(queue='pgtos_recusados', on_message_callback=partial(recebe_notificacao, tipo='exclusao'), auto_ack=True)
+        channel.basic_consume(queue='pedidos_enviados', on_message_callback=partial(recebe_notificacao, tipo='envio'),auto_ack=True)
 
         print("Esperando por mensagens. Para sair, pressione CTRL+C")
         channel.start_consuming()
