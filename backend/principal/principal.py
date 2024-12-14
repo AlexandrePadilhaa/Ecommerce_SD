@@ -17,6 +17,7 @@
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+import httpx
 import threading
 import pika
 import json
@@ -72,16 +73,23 @@ pedidos = {
         "status": "Criado"
     }
 }
+
+
 @app.get("/pedidos/")
-def listar_pedidos():
-    return {"pedidos": list(pedidos.values())}
+async def listar_pedidos():
+    async with httpx.AsyncClient() as client:
+        response = await client.get("http://localhost:8001/estoque/")  # URL do microsserviço de estoque
+        print(f"response {response}")
+    return response.json()
 
 @app.get("/pedidos/{id}")
-def consultar_pedido(id: int):
-    pedido = pedidos.get(id)
-    if not pedido:
+async def consultar_pedido(id: int):
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f"http://localhost:8001/estoque/{id}")  
+        print(f"response {response}")
+    if response.status_code == 404:
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
-    return pedido
+    return response.json()
 
 # Exclusão de pedidos
 @app.delete("/pedidos/{id}")

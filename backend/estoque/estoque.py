@@ -20,28 +20,36 @@ EXCHANGE = "ecommerce"
 
 app = FastAPI()
 
+def ler_estoque_csv():
+    estoque = []
+    with open('backend/estoque/database.csv', mode='r') as file:
+        csv_reader = csv.DictReader(file)
+        for row in csv_reader:
+            row['quantidade_disponivel'] = int(row['quantidade_disponivel'])
+            row['quantidade_reservada'] = int(row['quantidade_reservada'])
+            row['preco'] = float(row['preco'])
+            estoque.append(row)
+    return estoque
+
+@app.get("/estoque/")
+def consultar_estoque():
+    estoque = ler_estoque_csv()  
+    return {"estoque": estoque}
+
+@app.get("/estoque/{produto_id}")
+def consultar_produto(produto_id: int):
+    estoque = ler_estoque_csv() 
+    produto = next((item for item in estoque if item['id_produto'] == str(produto_id)), None)
+    if produto:
+        return produto  
+    else:
+        return {"erro": produto,
+                "produto_id": produto_id}  
+
 
 def get_rabbitmq_connection():
     connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
     return connection
-
-# Função que será chamada para consumir mensagens do RabbitMQ
-def callback(ch, method, properties, body):
-    try:
-        # Tenta converter o corpo da mensagem para um dicionário
-        message = json.loads(body)
-        print(f"Recebido evento: {message}")
-
-        # Verifica se a mensagem está no formato esperado
-        if isinstance(message, dict):
-            if method.routing_key == "Pedidos_Criados":
-                atualizar_estoque(message, "criado")
-            elif method.routing_key == "Pedidos_Excluidos":
-                atualizar_estoque(message, "excluido")
-        else:
-            print("Erro: mensagem não está no formato esperado. Esperado um dicionário.")
-    except Exception as e:
-        print(f"Erro ao processar a mensagem: {e}")
         
 def pedido_criado(ch, method, properties, body):
     try:
