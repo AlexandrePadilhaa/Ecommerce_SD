@@ -21,8 +21,13 @@ import httpx
 import threading
 import pika
 import json
-
-from backend.utils import publish_message, get_connection
+from pathlib import Path
+import uvicorn
+import atexit
+# import sys
+# import os
+# sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname('utils.py'), '..')))
+# from backend.utils import publish_message, consume_messages
 
 app = FastAPI()
 
@@ -39,7 +44,27 @@ class Pedido(BaseModel):
     cliente: str
     produtos: list
     total: float
+    status: str
 
+pedidos = []
+    
+def publish(routing_key,message):
+    try:
+        connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
+        channel = connection.channel()
+        channel.exchange_declare(exchange=EXCHANGE, exchange_type="topic", durable=True)
+        
+        channel.basic_publish(
+            exchange=EXCHANGE,
+            routing_key=routing_key,
+            body=json.dumps(message),
+            properties=pika.BasicProperties(content_type="application/json")
+        )
+        connection.close()
+        print(f"Mensagem publicada com sucesso")
+    except Exception as e:
+        print(f"Erro ao publicar mensagem: {e}")
+        
 # Endpoint para criar um pedido
 @app.post("/pedidos/", status_code=201)
 def criar_pedido(pedido: Pedido):
@@ -48,56 +73,103 @@ def criar_pedido(pedido: Pedido):
             "id": pedido.id,
             "cliente": pedido.cliente,
             "produtos": pedido.produtos,
-            "total": pedido.total
+            "total": pedido.total,
+            "status": pedido.status
         }
-        publish_message("Pedidos_Criados", mensagem)
+        publish("Pedidos_Criados", mensagem)
+        pedidos.append(pedido)
         return {"mensagem": "Pedido criado com sucesso", "pedido": mensagem}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao criar pedido: {str(e)}")
 
-
-#test
-pedidos = {
-    1: {
-        "id": 1,
-        "cliente": "João Silva",
-        "produtos": ["Produto A", "Produto B"],
-        "total": 150.50,
-        "status": "Criado"
-    },
-    2: {
-        "id": 2,
-        "cliente": "Maria Souza",
-        "produtos": ["Produto C"],
-        "total": 75.00,
-        "status": "Criado"
-    }
-}
-
-
 @app.get("/pedidos/")
-async def listar_pedidos():
+def listar_pedidos():
+    if len(pedidos)>0:
+        return {'pedidos': pedidos}
+    raise HTTPException(status_code=204, detail="Sem pedidos")
+
+@app.get("/pedidos/{id}/estoque")
+async def consultar_estoque_pedido(id: int):
+    pedido = next((pedido for pedido in pedidos if pedido.id == id), None)
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+
     async with httpx.AsyncClient() as client:
-        response = await client.get("http://localhost:8001/estoque/")  # URL do microsserviço de estoque
-        print(f"response {response}")
-    return response.json()
+        produtos_estoque = []
+        for produto_id in pedido.produtos:
+            print('entrou no pedidos id')
+            response = await client.get(f"http://localhost:8001/estoque/{produto_id}")
+            if response.status_code == 404:
+                produtos_estoque.append({"produto_id": produto_id, "erro": "Produto não encontrado"})
+            else:
+                produtos_estoque.append(response.json())
+
+    return {"estoque_produtos": produtos_estoque}
 
 @app.get("/pedidos/{id}")
-async def consultar_pedido(id: int):
-    async with httpx.AsyncClient() as client:
-        response = await client.get(f"http://localhost:8001/estoque/{id}")  
-        print(f"response {response}")
-    if response.status_code == 404:
-        raise HTTPException(status_code=404, detail="Pedido não encontrado")
-    return response.json()
-
+def consultar_pedido(id: int):
+    print('consultando pedido: ',id)
+    for pedido in pedidos:
+        if pedido['id'] == id:
+            return {'pedido': pedido}
+    raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    
 # Exclusão de pedidos
 @app.delete("/pedidos/{id}")
 def excluir_pedido(id: int):
     pedido = pedidos.pop(id, None)
     if not pedido:
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    
+    atualiza_status(id,'cancelado')
+    
     # Publica no tópico Pedidos_Excluídos
-    publish_message(exchange="ecommerce", routing_key="Pedidos_Excluidos", message={"id": id})
-    return {"mensagem": "Pedido excluído com sucesso"}
+    publish(exchange="ecommerce", routing_key="Pedidos_Excluidos", message={"id": id})
+    return {"mensagem": "Pedido excluído com sucesso"}    
+    
+def atualiza_status(id_pedido,status):
+    for pedido in pedidos:
+        if pedido['id'] == id_pedido:
+            pedido['status'] = status
+    print(f'Status do pedido {id_pedido} atualizado')
+            
+def recebe_notificacao(ch, method, properties,body):
+    try:
+        message = json.loads(body)
+        print(f"Recebido evento: {message}")
+        id = message['id_pedido']
+        status = message['status']
+        
+        atualiza_status(id,status)
+    except Exception as e:
+        print(f"Erro ao processar pedido: {e}")
+        
+def iniciar_consumidores():
+    # consume_messages('pedidos_aprovados','Pedidos_Aprovados',atualiza_status)
+    # consume_messages('pedidos_recusados','Pedidos_Recusados',excluir_pedido)
+    # pedido enviado
+    
+    try:
+        connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
+        channel = connection.channel()
 
+        channel.exchange_declare(exchange=EXCHANGE, exchange_type='topic', durable=True)
+
+        channel.queue_declare(queue='pgtos_aprovados', durable=True)
+        channel.queue_declare(queue='pgtos_recusados', durable=True)
+
+        channel.queue_bind(exchange=EXCHANGE, queue='pgtos_aprovados', routing_key='Pagamentos_Aprovados')
+        channel.queue_bind(exchange=EXCHANGE, queue='pgtos_recusados', routing_key='Pagamentos_Recusados')
+
+        channel.basic_consume(queue='pgtos_aprovados', on_message_callback=recebe_notificacao, auto_ack=True)
+        channel.basic_consume(queue='pgtos_recusados', on_message_callback=excluir_pedido, auto_ack=True)
+
+        print("Esperando por mensagens. Para sair, pressione CTRL+C")
+        channel.start_consuming()
+
+    except Exception as e:
+        print(f"Erro ao conectar com RabbitMQ: {e}")
+
+
+if __name__ == "__main__":
+    iniciar_consumidores()

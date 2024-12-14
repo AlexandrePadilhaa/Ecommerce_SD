@@ -37,15 +37,14 @@ def consultar_estoque():
     return {"estoque": estoque}
 
 @app.get("/estoque/{produto_id}")
-def consultar_produto(produto_id: int):
+def consultar_produtos(produto_id):
     estoque = ler_estoque_csv() 
-    produto = next((item for item in estoque if item['id_produto'] == str(produto_id)), None)
+    produto = next((item for item in estoque if item['nome'] == str(produto_id)), None)
     if produto:
         return produto  
     else:
         return {"erro": produto,
                 "produto_id": produto_id}  
-
 
 def get_rabbitmq_connection():
     connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
