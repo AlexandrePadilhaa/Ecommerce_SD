@@ -1,0 +1,14 @@
+
+    ================================
+            NOTA FISCAL SIMULADA
+    ================================
+    ID do Pedido: 2
+    Cliente: Maria Souza
+    
+    Produtos:
+    Produto C
+    
+    Valor Total: R$5.00
+    
+    ================================
+    

@@ -4,7 +4,14 @@
 ## iniciar serviço
 uvicorn backend.principal.principal:app --reload --host 0.0.0.0 --port 8000 
 uvicorn backend.estoque.estoque:app --reload --host 0.0.0.0 --port 8001
-uvicorn backend.pagamento.sistema_externo:app --reload --host 0.0.0.0 --port 8002
+uvicorn backend.pagamento.sistema_externo:app --reload --host 0.0.0.0 --port 8003
+
+## iniciar microserviços
+python backend/principal/principal.py
+python backend/estoque/estoque.py
+python backend/pagamento/pagamento.py
+python backend/pagamento/sistema_externo.py
+python backend/envio/envio.py
 
 ### Iniciar RabbitMQ
 rabbitmq-service start

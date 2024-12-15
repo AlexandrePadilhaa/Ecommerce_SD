@@ -8,17 +8,16 @@
 # cancele o pedido e atualize o estoque.
 
 import pika
-from fastapi import FastAPI, HTTPException
-import httpx
 from pydantic import BaseModel
 import json
 import requests
-import threading
+from fastapi import FastAPI, HTTPException
 # from backend.utils import publish_message, get_connection, consume_messages
 
 RABBITMQ_HOST = "localhost"
 EXCHANGE = "ecommerce"
 
+        
 def publish(routing_key,message):
     try:
         connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
@@ -35,7 +34,29 @@ def publish(routing_key,message):
         print(f"Mensagem publicada com sucesso {message}")
     except Exception as e:
         print(f"Erro ao publicar mensagem: {e}")
+        
+def processa_resposta_pagamento(id_pedido: int, pagamento):
+    status = pagamento['status_pagamento']
+    saldo = pagamento['saldo_cliente']
+    try:
+        if status == "aprovado":
+            print(f'Pagamento aprovado para o pedido {id_pedido}: Saldo restante {saldo}')
+            publish("Pagamentos_Aprovados", pagamento)
+        else:
+            print(f'Pagamento recusado para o pedido {id_pedido}: Saldo do cliente {saldo}')
+            publish("Pagamentos_Recusados", pagamento)
+    except Exception as e:
+        print(f"Erro ao processar a resposta do pagamento: {e}")
+
+# webhook
+app = FastAPI()
+
+@app.post('/pedido/{id_pedido}/pagamento')
+async def webhook_pagamento(id_pedido: int, pagamento: dict):
+    print(f"Recebido Webhook para pagamento - ID do Pedido: {id_pedido}")
     
+    processa_resposta_pagamento(id_pedido, pagamento)
+
 def processa_pedido(ch, method, properties, body):
     try:
         message = json.loads(body)
@@ -46,18 +67,13 @@ def processa_pedido(ch, method, properties, body):
             return
         
         pedido_id = message['id']
-        
-        # webhook
-        response = requests.post(f"http://localhost:8002/pagamento/{pedido_id}")
-        print(f"Resposta do pagamento: {response.status_code} - {response.text}")
-     
-        if response.status_code == 200:
-            status = response.json().get("status", "unknown")
-        else:
-            status = "erro"
-
-        resposta = {'id_pedido': pedido_id, 'status': status}
-        publish('Pagamentos_Aprovados' if status == 'aprovado' else 'Pagamentos_Recusados', resposta)
+       
+        pagamento = {
+            "id_transacao": 100 + pedido_id,
+            'pedido': message,
+        }
+       
+        publish('Processar_Pagamentos', pagamento)
 
     except Exception as e:
         print(f"Erro ao processar pedido: {e}")

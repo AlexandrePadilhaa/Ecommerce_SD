@@ -40,6 +40,7 @@ def health_check():
 
 class Pedido(BaseModel):
     id: int
+    id_pedido: int
     cliente: str
     produtos: list
     total: float
@@ -96,7 +97,6 @@ async def consultar_estoque_pedido(id: int):
     async with httpx.AsyncClient() as client:
         produtos_estoque = []
         for produto_id in pedido.produtos:
-            print('entrou no pedidos id')
             response = await client.get(f"http://localhost:8001/estoque/{produto_id}")
             if response.status_code == 404:
                 produtos_estoque.append({"produto_id": produto_id, "erro": "Produto não encontrado"})
@@ -136,8 +136,13 @@ def recebe_notificacao(ch, method, properties,body,tipo):
     try:
         message = json.loads(body)
         print(f"Recebido evento: {message}")
-        id = message['id_pedido']
-        status = message['status']
+        
+        if tipo != 'envio':
+            id = message['pedido']['id']
+            status = message['pedido']['status']
+        else:
+            id = message['id_pedido']
+            status = message['status']
         
         if tipo != 'exclusao':
             atualiza_status(id,status)
