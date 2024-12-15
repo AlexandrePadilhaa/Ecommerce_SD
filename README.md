@@ -2,10 +2,9 @@
 
 
 ## iniciar serviço
-uvicorn backend.principal.principal:app --reload --host 0.0.0.0 --port 8000 
-uvicorn backend.estoque.estoque:app --reload --host 0.0.0.0 --port 8001
-uvicorn backend.pagamento.pagamento:app --reload --host 0.0.0.0 --port 8003
-uvicorn backend.notificacao.notificacao:app --reload --host 0.0.0.0 --port 8004
+python -m uvicorn backend.principal.principal:app --reload --host 0.0.0.0 --port 8000 
+python -m uvicorn backend.estoque.estoque:app --reload --host 0.0.0.0 --port 8001
+python -m uvicorn backend.pagamento.pagamento:app --reload --host 0.0.0.0 --port 8003
 
 ## iniciar microserviços
 python backend/principal/principal.py
@@ -41,3 +40,11 @@ http://localhost:8000/pedidos/
   "total": 75.00,
   "status": "Criado"
 }
+
+
+## frontend
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
+
+npm install -g http-server -d
+
+npm run start
