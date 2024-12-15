@@ -1,36 +1,51 @@
-from fastapi import FastAPI, HTTPException
-import random
-from pydantic import BaseModel
 import requests
 import pika
 import json
+import csv
 
 RABBITMQ_HOST = "localhost"
 EXCHANGE = "ecommerce"
     
-# sempre passam no debito
-clientes_limite = {
-    "João Silva": 200,
-    "Maria Souza": 300,
-    "Jose Ribeiro": 100
-}    
+def ler_limites_csv():
+    limites = {}
+    with open('backend/pagamento/limite_clientes.csv', mode='r', encoding='utf-8') as file:
+        csv_reader = csv.DictReader(file)
+        for row in csv_reader:
+            row['limite'] = float(row['limite']) 
+            limites[row['cliente']] = row['limite']
+    return limites
 
+def atualiza_limites(limite_clientes):
+    with open('backend/pagamento/limite_clientes.csv', mode='r', encoding='utf-8') as file:
+        rows = list(csv.DictReader(file))
+
+    for row in rows:
+        if row['cliente'] in limite_clientes:
+            row['limite'] = limite_clientes[row['cliente']] 
+
+    with open('backend/pagamento/limite_clientes.csv', mode='w', encoding='utf-8', newline='') as file:
+        fieldnames = ['cliente', 'limite']
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+    
 def processa_pedido(ch, method, properties, body):
     try:
         message = json.loads(body)
-        print(f"Recebido evento: {message}")
+        print(f"Recebido evento no Sistema Externo de Pagamento: pedido {message['pedido']['id']}")
 
         pedido_id = message['pedido']['id']
         cliente = message['pedido']['cliente']
         valor = message['pedido']['total']
         
-        # Verifica o limite de crédito do cliente
-        lim_cliente = clientes_limite.get(cliente)
+        clientes_limite = ler_limites_csv()
+        
+        # Verifica o limite do cliente
+        lim_cliente = clientes_limite[cliente]
+        
         if lim_cliente is None:
             print(f"Cliente {cliente} não encontrado.")
             return
-
-        # Simula o processo de pagamento (verifica se o valor é suficiente)
         if valor > lim_cliente:
             status = "recusado"
         else:
@@ -42,9 +57,12 @@ def processa_pedido(ch, method, properties, body):
         message['saldo_cliente'] = clientes_limite
             
 
-        response = requests.post(f"http://localhost:8003/pedido/{pedido_id}/pagamento", json=message)
+        response = requests.post(f"http://localhost:8003/pedido/{pedido_id}/pagamento/", json=message)
+        print(response.status_code)
         if response.status_code == 200:
             print(f'Pagamento {status} para {cliente}')
+            
+        atualiza_limites(clientes_limite)
 
     except Exception as e:
         print(f"Erro ao processar pedido: {e}")

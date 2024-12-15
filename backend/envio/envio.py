@@ -41,7 +41,7 @@ def cria_nf(pedido):
     Cliente: {cliente}
     
     Produtos:
-    {produtos_str}
+        {produtos_str}
     
     Valor Total: R${valor_total:.2f}
     
@@ -58,7 +58,7 @@ def cria_nf(pedido):
     arquivo = f'{diretório}/nota_fiscal_{id_pedido}.txt'
     
     # Salvar a nota fiscal no arquivo
-    with open(arquivo, 'w') as f:
+    with open(arquivo, 'w',encoding='utf-8') as f:
         f.write(nota_fiscal)  # Escreve a nota fiscal no arquivo
 
     print(f"Nota fiscal salva em: {arquivo}")
@@ -67,12 +67,12 @@ def cria_nf(pedido):
 def envia_pedido(ch, method, properties, body):
     try:
         message = json.loads(body)
-        print(f"Recebido evento: {message}")
+        print(f"Recebido evento em Envio: pedido {message['pedido']['id']}")
 
-        pedido_id = message['pedido'].get('id')
+        pedido_id = message['pedido']['id']
         
-        time.sleep(3)
-        resposta = {'id_pedido': pedido_id, 'status': 'Enviado'}
+        time.sleep(10)
+        resposta = {'id': pedido_id, 'status': 'Enviado'}
         print(f'Pedido {pedido_id} enviado')
         cria_nf(message['pedido'])
         publish('Pedidos_Enviados', resposta)

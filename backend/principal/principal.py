@@ -40,7 +40,6 @@ def health_check():
 
 class Pedido(BaseModel):
     id: int
-    id_pedido: int
     cliente: str
     produtos: list
     total: float
@@ -76,8 +75,9 @@ def criar_pedido(pedido: Pedido):
             "total": pedido.total,
             "status": pedido.status
         }
-        publish("Pedidos_Criados", mensagem)
+        print("Pedidos_Criados", mensagem)
         pedidos.append(pedido)
+        publish("Pedidos_Criados", mensagem)
         return {"mensagem": "Pedido criado com sucesso", "pedido": mensagem}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao criar pedido: {str(e)}")
@@ -116,7 +116,7 @@ def consultar_pedido(id: int):
 # Exclusão de pedidos
 @app.delete("/pedidos/{id}")
 def excluir_pedido(id: int):
-    pedido = pedidos.pop(id, None)
+    pedido = pedidos.pop(id)
     if not pedido:
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
     
@@ -130,47 +130,48 @@ def atualiza_status(id_pedido,status):
     for pedido in pedidos:
         if pedido['id'] == id_pedido:
             pedido['status'] = status
-    print(f'Status do pedido {id_pedido} atualizado')
+    print(f'Status do pedido {id_pedido} atualizado: {status}')
             
 def recebe_notificacao(ch, method, properties,body,tipo):
     try:
         message = json.loads(body)
-        print(f"Recebido evento: {message}")
-        
+        # print(f'Recebido evento: {message}')
+        print(f"Recebido evento no Principal: atualização de {tipo}")
+
         if tipo != 'envio':
             id = message['pedido']['id']
-            status = message['pedido']['status']
+            status = message['status_pagamento']
         else:
-            id = message['id_pedido']
+            id = message['id']
             status = message['status']
         
         if tipo != 'exclusao':
             atualiza_status(id,status)
+        else:
+            excluir_pedido(id)
+            
     except Exception as e:
         print(f"Erro ao processar pedido: {e}")
         
 def iniciar_consumidores():
-    # consume_messages('pedidos_aprovados','Pedidos_Aprovados',atualiza_status)
-    # consume_messages('pedidos_recusados','Pedidos_Recusados',excluir_pedido)
-    # pedido enviado
-    
+
     try:
         connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
         channel = connection.channel()
 
         channel.exchange_declare(exchange=EXCHANGE, exchange_type='topic', durable=True)
 
-        channel.queue_declare(queue='pgtos_aprovados', durable=True)
-        channel.queue_declare(queue='pgtos_recusados', durable=True)
-        channel.queue_declare(queue='pedidos_enviados', durable=True)
+        channel.queue_declare(queue='pgtos_aprovados_pri', durable=True)
+        channel.queue_declare(queue='pgtos_recusados_pri', durable=True)
+        channel.queue_declare(queue='pedidos_enviados_pri', durable=True)
 
-        channel.queue_bind(exchange=EXCHANGE, queue='pgtos_aprovados', routing_key='Pagamentos_Aprovados')
-        channel.queue_bind(exchange=EXCHANGE, queue='pgtos_recusados', routing_key='Pagamentos_Recusados')
-        channel.queue_bind(exchange=EXCHANGE, queue='pedidos_enviados', routing_key='Pedidos_Enviados')
+        channel.queue_bind(exchange=EXCHANGE, queue='pgtos_aprovados_pri', routing_key='Pagamentos_Aprovados')
+        channel.queue_bind(exchange=EXCHANGE, queue='pgtos_recusados_pri', routing_key='Pagamentos_Recusados')
+        channel.queue_bind(exchange=EXCHANGE, queue='pedidos_enviados_pri', routing_key='Pedidos_Enviados')
         
-        channel.basic_consume(queue='pgtos_aprovados', on_message_callback=partial(recebe_notificacao, tipo='aprovacao'), auto_ack=True)
-        channel.basic_consume(queue='pgtos_recusados', on_message_callback=partial(recebe_notificacao, tipo='exclusao'), auto_ack=True)
-        channel.basic_consume(queue='pedidos_enviados', on_message_callback=partial(recebe_notificacao, tipo='envio'),auto_ack=True)
+        channel.basic_consume(queue='pgtos_aprovados_pri', on_message_callback=partial(recebe_notificacao, tipo='aprovacao'), auto_ack=True)
+        channel.basic_consume(queue='pgtos_recusados_pri', on_message_callback=partial(recebe_notificacao, tipo='exclusao'), auto_ack=True)
+        channel.basic_consume(queue='pedidos_enviados_pri', on_message_callback=partial(recebe_notificacao, tipo='envio'),auto_ack=True)
 
         print("Esperando por mensagens. Para sair, pressione CTRL+C")
         channel.start_consuming()

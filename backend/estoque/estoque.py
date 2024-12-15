@@ -53,7 +53,7 @@ def get_rabbitmq_connection():
 def pedido_criado(ch, method, properties, body):
     try:
         message = json.loads(body)
-        print(f"Recebido evento: {message}")
+        print(f"Recebido evento em estoque: Pedido {message['id']} criado")
         for produto_id in message['produtos']:
             atualizar_estoque(produto_id, "reservar")
     except Exception as e:
@@ -62,7 +62,7 @@ def pedido_criado(ch, method, properties, body):
 def pedido_excluido(ch, method, properties, body):
     try:
         message = json.loads(body)
-        print(f"Recebido evento: {message}")
+        print(f"Recebido evento em estoque: Pedido {message['id']} excluido")
         for produto_id in message['produtos']:
             atualizar_estoque(produto_id, "cancelar")        
     except Exception as e:

@@ -8,22 +8,22 @@
 # cancele o pedido e atualize o estoque.
 
 import pika
-from pydantic import BaseModel
 import json
-import requests
 from fastapi import FastAPI, HTTPException
+
 # from backend.utils import publish_message, get_connection, consume_messages
 
 RABBITMQ_HOST = "localhost"
 EXCHANGE = "ecommerce"
 
+app = FastAPI()
         
 def publish(routing_key,message):
     try:
         connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
         channel = connection.channel()
         channel.exchange_declare(exchange=EXCHANGE, exchange_type="topic", durable=True)
-        
+
         channel.basic_publish(
             exchange=EXCHANGE,
             routing_key=routing_key,
@@ -31,7 +31,7 @@ def publish(routing_key,message):
             properties=pika.BasicProperties(content_type="application/json")
         )
         connection.close()
-        print(f"Mensagem publicada com sucesso {message}")
+        print(f"Pagamento: Mensagem publicada com sucesso para {routing_key}")
     except Exception as e:
         print(f"Erro ao publicar mensagem: {e}")
         
@@ -48,26 +48,21 @@ def processa_resposta_pagamento(id_pedido: int, pagamento):
     except Exception as e:
         print(f"Erro ao processar a resposta do pagamento: {e}")
 
-# webhook
-app = FastAPI()
-
-@app.post('/pedido/{id_pedido}/pagamento')
+@app.post('/pedido/{id_pedido}/pagamento/')
 async def webhook_pagamento(id_pedido: int, pagamento: dict):
-    print(f"Recebido Webhook para pagamento - ID do Pedido: {id_pedido}")
-    
-    processa_resposta_pagamento(id_pedido, pagamento)
+    try:
+        print(f"Recebido Webhook para pagamento - ID do Pedido: {id_pedido}")
+        processa_resposta_pagamento(id_pedido, pagamento)
+    except Exception as e:
+        print(f"Erro ao processar a resposta do pagamento: {e}")
 
 def processa_pedido(ch, method, properties, body):
     try:
         message = json.loads(body)
-        print(f"Recebido evento: {message}")
-
-        if 'id' not in message:
-            print("Erro: 'id' não encontrado na mensagem")
-            return
+        print(f"Recebido evento em Pagamento: Processo de Pagamento iniciado para pedido {message['id']}")
         
         pedido_id = message['id']
-       
+      
         pagamento = {
             "id_transacao": 100 + pedido_id,
             'pedido': message,
