@@ -1,4 +1,4 @@
 id_produto,nome,quantidade_disponivel,quantidade_reservada,preco
-1,Produto A,7,3,50.00
+1,Produto A,0,10,50.00
 2,Produto B,0,2,75.50
-3,Produto C,4,1,120.00
+3,Produto C,0,5,120.00

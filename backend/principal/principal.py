@@ -179,5 +179,6 @@ def iniciar_consumidores():
         print(f"Erro ao conectar com RabbitMQ: {e}")
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
+    print("Iniciando Principal Consumidor...")
     iniciar_consumidores()

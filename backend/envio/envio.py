@@ -98,4 +98,5 @@ def iniciar_consumidores():
     # consume_messages('pedidos_criados', 'Pedidos_Criados', on_message_callback=processa_pedido, auto_ack=True)
    
 if __name__ == "__main__":
+    print("Iniciando Envio Consumidor...")
     iniciar_consumidores()
