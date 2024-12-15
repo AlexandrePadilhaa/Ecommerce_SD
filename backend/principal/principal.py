@@ -16,6 +16,7 @@
 # excluir
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import httpx
 import threading
@@ -23,12 +24,21 @@ import pika
 import json
 from pathlib import Path
 from functools import partial
+import requests
 # import sys
 # import os
 # sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname('utils.py'), '..')))
 # from backend.utils import publish_message, consume_messages
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://127.0.0.1:8080"],  # URL do frontend
+    allow_credentials=True,
+    allow_methods=["*"],  # Permitir todos os métodos (GET, POST, etc.)
+    allow_headers=["*"],  # Permitir todos os headers
+)
 
 RABBITMQ_HOST = "localhost"
 EXCHANGE = "ecommerce"
@@ -38,6 +48,15 @@ EXCHANGE = "ecommerce"
 def health_check():
     return {"status": "ok"}
 
+@app.get("/estoque")
+def get_estoque():
+    try:
+        # Faz a requisição no servico estoque
+        response = requests.get("http://localhost:8002/estoque")
+        response.raise_for_status()  
+        return response.json()  #
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao acessar o serviço de estoque: {str(e)}")
 class Pedido(BaseModel):
     id: int
     cliente: str
@@ -88,6 +107,12 @@ def listar_pedidos():
         return {'pedidos': pedidos}
     raise HTTPException(status_code=204, detail="Sem pedidos")
 
+@app.get("/pedidos/")
+def listar_pedidos():
+    if len(pedidos)>0:
+        return {'pedidos': pedidos}
+    raise HTTPException(status_code=204, detail="Sem pedidos")
+
 @app.get("/pedidos/{id}/estoque")
 async def consultar_estoque_pedido(id: int):
     pedido = next((pedido for pedido in pedidos if pedido.id == id), None)
@@ -97,7 +122,7 @@ async def consultar_estoque_pedido(id: int):
     async with httpx.AsyncClient() as client:
         produtos_estoque = []
         for produto_id in pedido.produtos:
-            response = await client.get(f"http://localhost:8001/estoque/{produto_id}")
+            response = await client.get(f"http://localhost:8002/estoque/{produto_id}")
             if response.status_code == 404:
                 produtos_estoque.append({"produto_id": produto_id, "erro": "Produto não encontrado"})
             else:

@@ -15,10 +15,11 @@ async function fetchProductsTest() {
 // Função para buscar produtos da API
 async function fetchProducts() {
   try {
-      const response = await fetch('http://localhost:8001/estoque/');
+      const response = await fetch(API_URL);
       if (!response.ok) throw new Error('Erro ao obter produtos!');
       
       const data = await response.json(); // Recebe o JSON
+      console.log(data)
       displayProducts(data.estoque); // Acessa a propriedade `estoque`
   } catch (error) {
       console.error(error);
