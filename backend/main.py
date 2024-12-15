@@ -12,8 +12,8 @@ def main():
         {"nome": "Pagamento Consumidor", "caminho": "backend/pagamento/pagamento.py"},
         {"nome": "Sistema Externo Pagamento", "caminho": "backend/pagamento/sistema_externo.py"},
         {"nome": "Envio Consumidor", "caminho": "backend/envio/envio.py"},
+        {"nome": "Notificacao Consumidor", "caminho": "backend/notificacao/notificacao.py"},
     ]
-
 
     processos = []
 
