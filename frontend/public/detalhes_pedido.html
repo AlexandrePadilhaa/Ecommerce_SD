@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalhes do Pedido</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <h1>Detalhes do Pedido</h1>
+    <div id="detalhes-pedido"></div>
+
+    <script type="module">
+        const urlParams = new URLSearchParams(window.location.search);
+        const pedidoId = urlParams.get('id');  // Pega o ID do pedido da URL
+
+        async function carregarDetalhesPedido() {
+            try {
+                const response = await fetch(`http://localhost:8001/pedidos/${pedidoId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const pedido = data.pedido;
+
+                    const detalhesDiv = document.getElementById("detalhes-pedido");
+                    detalhesDiv.innerHTML = `
+            <h2>Pedido #${pedido.id}</h2>
+            <p>Cliente: ${pedido.cliente}</p>
+            <p>Status: ${pedido.status}</p>
+            <p>Total: R$${pedido.total}</p>
+            <h3>Produtos:</h3>
+            <ul>
+              ${pedido.produtos.map(produto => `<li>Produto #${produto}</li>`).join('')}
+            </ul>
+          `;
+                } else {
+                    alert("Pedido não encontrado.");
+                }
+            } catch (error) {
+                console.error("Erro ao carregar detalhes do pedido:", error);
+            }
+        }
+
+        carregarDetalhesPedido();
+    </script>
+</body>
+
+</html>
