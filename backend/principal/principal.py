@@ -19,7 +19,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import httpx
-import threading
+import time
 import pika
 import json
 from pathlib import Path
@@ -34,10 +34,10 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:8080"],  # URL do frontend
+    allow_origins=["http://127.0.0.1:5500","http://127.0.0.1:8080"],  # Permite apenas essa origem específica
     allow_credentials=True,
-    allow_methods=["*"],  # Permitir todos os métodos (GET, POST, etc.)
-    allow_headers=["*"],  # Permitir todos os headers
+    allow_methods=["*"],  # Permite todos os métodos (GET, POST, etc.)
+    allow_headers=["*"],  # Permite todos os cabeçalhos
 )
 
 RABBITMQ_HOST = "localhost"
@@ -96,6 +96,7 @@ def criar_pedido(pedido: Pedido):
         }
         print("Pedidos_Criados", mensagem)
         pedidos.append(pedido)
+        time.sleep(5)
         publish("Pedidos_Criados", mensagem)
         return {"mensagem": "Pedido criado com sucesso", "pedido": mensagem}
     except Exception as e:

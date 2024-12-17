@@ -10,6 +10,7 @@
 import pika
 import json
 from fastapi import FastAPI, HTTPException
+import time
 
 # from backend.utils import publish_message, get_connection, consume_messages
 
@@ -39,6 +40,7 @@ def processa_resposta_pagamento(id_pedido: int, pagamento):
     status = pagamento['status_pagamento']
     saldo = pagamento['saldo_cliente']
     try:
+        time.sleep(5)
         if status == "aprovado":
             print(f'Pagamento aprovado para o pedido {id_pedido}: Saldo restante {saldo}')
             publish("Pagamentos_Aprovados", pagamento)
@@ -67,7 +69,7 @@ def processa_pedido(ch, method, properties, body):
             "id_transacao": 100 + pedido_id,
             'pedido': message,
         }
-       
+        time.sleep(5)
         publish('Processar_Pagamentos', pagamento)
 
     except Exception as e:

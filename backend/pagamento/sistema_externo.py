@@ -56,7 +56,7 @@ def processa_pedido(ch, method, properties, body):
         message['status_pagamento'] = status
         message['saldo_cliente'] = clientes_limite
             
-
+        
         response = requests.post(f"http://localhost:8003/pedido/{pedido_id}/pagamento/", json=message)
         print(response.status_code)
         if response.status_code == 200:
