@@ -6,36 +6,45 @@ const pedidoListaDiv = document.getElementById("pedido-lista");
 const clienteNomeInput = document.getElementById("cliente-nome");
 const carrinhoContainer = document.querySelector('.produtos.selecionados');
 
-// exibir os produtos disponíveis
 async function fetchProducts() {
-  const fakeProducts = [
-    { nome: "Produto A", preco: 10.0, id_produto: 1 },
-    { nome: "Produto B", preco: 20.0, id_produto: 2 },
-    { nome: "Produto C", preco: 30.0, id_produto: 3 }
-  ];
-  displayProducts(fakeProducts);
+  try {
+    const response = await fetch("http://localhost:8001/estoque"); 
+    if (response.ok) {
+      const data = await response.json();
+      const produtosDisponiveis = data.estoque.filter(product => product.quantidade_disponivel > 0); 
+      displayProducts(produtosDisponiveis);  
+    } else {
+      console.log("Erro ao carregar produtos do estoque.");
+    }
+  } catch (error) {
+    console.error("Erro ao buscar produtos:", error);
+  }
 }
 
-// exibir os produtos na tela
+// exibir os produtos no HTML
 function displayProducts(products) {
   produtoListaDiv.innerHTML = '';
-  products.map(product => {
+  products.forEach(product => {
     const productElement = document.createElement('div');
     productElement.className = 'product';
     productElement.innerHTML = `
       <h2>${product.nome}</h2>
+      <img src="https://via.placeholder.com/150" alt="${product.nome}">
       <p>Preço: R$${product.preco.toFixed(2)}</p>
-      <button class="botao-produto" data-id="${product.id_produto}">Adicionar ao carrinho</button>
+      <p>Disponível: ${product.quantidade_disponivel} unidades</p>
+      <button class="botao-produto" data-id="${product.id_produto}" data-nome="${product.nome}" data-preco="${product.preco}">Adicionar ao carrinho</button>
     `;
     produtoListaDiv.appendChild(productElement);
   });
 
-  // evento botões de adicionar ao carrinho
+  // adicionar ao carrinho
   document.querySelectorAll(".botao-produto").forEach(button => {
     button.addEventListener("click", () => {
       const produtoId = button.getAttribute("data-id");
-      if (!produtos.includes(produtoId)) {
-        produtos.push(produtoId);
+      const produtoNome = button.getAttribute("data-nome");
+      const produtoPreco = parseFloat(button.getAttribute("data-preco"));
+      if (!produtos.some(item => item.id_produto === produtoId)) {
+        produtos.push({ id_produto: produtoId, nome: produtoNome, preco: produtoPreco });
         listarProdutosNoCarrinho();
       }
     });
@@ -45,11 +54,17 @@ function displayProducts(products) {
 // listar os produtos no carrinho
 function listarProdutosNoCarrinho() {
   carrinhoContainer.innerHTML = "";
-  produtos.forEach(id => {
+  produtos.forEach(produto => {
     const produtoDiv = document.createElement('div');
-    produtoDiv.textContent = `Produto #${id}`;
+    produtoDiv.innerHTML = `
+      <p>${produto.nome} - R$${produto.preco.toFixed(2)}</p>
+    `;
     carrinhoContainer.appendChild(produtoDiv);
   });
+
+  const totalDiv = document.createElement('div');
+  totalDiv.textContent = `Total: R$${calcularTotal().toFixed(2)}`;
+  carrinhoContainer.appendChild(totalDiv);
 }
 
 // listar os pedidos na tela
@@ -97,7 +112,7 @@ document.getElementById("fazer-pedido").addEventListener("click", async () => {
     status: "Criado"
   };
 
-  ultimoId = ultimoId + 1;
+  ultimoId ++;
 
   try {
     const response = await fetch("http://localhost:8001/pedidos/", {
@@ -105,12 +120,12 @@ document.getElementById("fazer-pedido").addEventListener("click", async () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(pedido)
     });
-
+    log(pedido)
     if (response.ok) {
       alert("Pedido realizado com sucesso!");
-      produtos = [];  // Limpa o carrinho
-      listarProdutosNoCarrinho();  // Atualiza o carrinho na tela
-      listarPedidos();  // Atualiza a lista de pedidos
+      produtos = [];  
+      listarProdutosNoCarrinho();  
+      listarPedidos(); 
     } else {
       alert("Erro ao realizar o pedido.");
     }
@@ -119,13 +134,9 @@ document.getElementById("fazer-pedido").addEventListener("click", async () => {
   }
 });
 
-// Função para calcular o total do pedido (exemplo simples)
 function calcularTotal() {
-  return produtos.length * 20; // Aqui poderia ser mais elaborado, considerando o preço dos produtos
+  return produtos.reduce((total, produto) => total + produto.preco, 0);
 }
 
-// Chama a função para listar os pedidos ao carregar a página
 listarPedidos();
-
-// Inicia a lista de produtos disponíveis
 fetchProducts();
