@@ -6,13 +6,19 @@
   <title>Loja de Produtos</title>
   <link rel="stylesheet" href="styles.css">
 </head>
-<header>
-  <a href="/">Home</a>
-  <a href="/carrinho">Carrinho</a>
-</header>
 <body>
   <h1>Produtos Disponíveis</h1>
-  <div id="product-list"></div>
+  <div class="container">
+    <div id="product-list"></div>
+    <div class="carrinho">
+      <h2>Carrinho</h2>
+      <div class="produtos selecionados">
+      </div>
+      <button id="fazer-pedido">Fazer Pedido</button>
+      <h3>Status do pedido</h3>
+      <div class="status-pedido"></div>
+    </div>
+  </div>
   <script type="module" src="index.js"></script>
   <script type="module" src="eventSource.js"></script>
 </body>

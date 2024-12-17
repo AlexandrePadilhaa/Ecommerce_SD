@@ -5,7 +5,7 @@
 python -m uvicorn backend.principal.principal:app --reload --host 0.0.0.0 --port 8001
 python -m uvicorn backend.estoque.estoque:app --reload --host 0.0.0.0 --port 8002
 python -m uvicorn backend.pagamento.pagamento:app --reload --host 0.0.0.0 --port 8003
-python -m uvicorn backend.notificacao.notificacao:app --reload --host 0.0.0.0 --port 8003
+python -m uvicorn backend.notificacao.notificacao:app --reload --host 0.0.0.0 --port 8004
 
 ## iniciar microserviços
 python backend/principal/principal.py
@@ -16,7 +16,7 @@ python backend/envio/envio.py
 python backend/notificacao/notificacao.py
 
 ### inicia todos os microserviços
-python backend/main.py
+python -m backend/main.py
 
 ### Iniciar RabbitMQ
 rabbitmq-service start

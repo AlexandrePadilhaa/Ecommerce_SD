@@ -1,19 +1,4 @@
-header{
-  background-color: ghostwhite;
-  height: 100px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: row;
-  gap: 50px;
-  width: 100%;
-}
 
-header a{
-  color: #000;
-  font-weight: bold;
-  font-size: large;
-}
 
 body {
     font-family: Arial, sans-serif;
@@ -29,8 +14,40 @@ body {
   h1 {
     color: #333;
   }
+
+  .container{
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .carrinho{
+    width: 25%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .produto-selecionado{
+    margin: 10px;
+    border: solid 1px #333;
+  }
+
+  .botao-produto{
+    border: solid 2px black;
+    border-radius: 25%;
+    padding: 10px;
+    transition: 0.5s;
+  }
+  .botao-produto:hover{
+    background-color: #333;
+  }
   
   #product-list {
+    width: 75%;
     display: flex;
     flex-wrap: wrap;
     gap: 20px;
