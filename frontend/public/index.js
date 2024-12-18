@@ -1,4 +1,4 @@
-let ultimoId = 1; 
+let ultimoId = parseInt(localStorage.getItem("ultimoId")) || 1;
 let produtos = [];
 
 const produtoListaDiv = document.getElementById("product-list");
@@ -82,7 +82,7 @@ async function listarPedidos() {
         pedidoDiv.classList.add("pedido");
         // é pra redirecionar
         pedidoDiv.innerHTML = `
-          <h3><a href="/detalhes_pedido.html?id=${pedido.id}">Pedido #${pedido.id} - ${pedido.cliente}</a></h3> 
+          <h3><a href="detalhes_pedido.html?id=${pedido.id}">Pedido #${pedido.id} - ${pedido.cliente}</a></h3> 
           <p>Status: ${pedido.status}</p>
         `;
         pedidoListaDiv.appendChild(pedidoDiv);
@@ -112,7 +112,8 @@ document.getElementById("fazer-pedido").addEventListener("click", async () => {
     status: "Criado"
   };
 
-  ultimoId ++;
+  ultimoId++;
+  localStorage.setItem("ultimoId", ultimoId);
 
   try {
     const response = await fetch("http://localhost:8001/pedidos/", {
@@ -120,7 +121,6 @@ document.getElementById("fazer-pedido").addEventListener("click", async () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(pedido)
     });
-    log(pedido)
     if (response.ok) {
       alert("Pedido realizado com sucesso!");
       produtos = [];  
